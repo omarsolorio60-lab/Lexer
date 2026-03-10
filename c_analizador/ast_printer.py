@@ -1,3 +1,7 @@
+
+import io
+from contextlib import redirect_stdout
+
 from ast_nodes import (
     Program, FunctionDeclaration, Block, VariableDeclaration, Assignment,
     ReturnStatement, IfStatement, WhileStatement, ForStatement, ExpressionStatement,
@@ -105,3 +109,9 @@ def mostrar_ast(node, indent=""):
 
         print(f"{indent}  Cuerpo:")
         mostrar_ast(node.body, indent + "    ")
+
+def obtener_ast_como_texto(ast):
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        mostrar_ast(ast)
+    return buffer.getvalue()
