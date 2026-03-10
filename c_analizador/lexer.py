@@ -6,27 +6,21 @@ from token_model import Token
 
 class LexicalAnalyzer:
     def __init__(self):
-        self.token_patterns = [
-            # Preprocesador
+        raw_patterns = [
             (r'\#[^\n]*', TokenType.PREPROCESSOR),
 
-            # Comentarios
             (r'//[^\n]*', TokenType.COMMENT),
             (r'/\*.*?\*/', TokenType.COMMENT),
 
-            # Literales
             (r'"([^"\\]|\\.)*"', TokenType.STRING),
             (r"'([^'\\]|\\.)'", TokenType.CHAR_LITERAL),
 
-            # Números
             (r'\d+\.\d+', TokenType.NUMBER),
             (r'\d+', TokenType.NUMBER),
 
-            # Operadores lógicos
             (r'&&', TokenType.AND),
             (r'\|\|', TokenType.OR),
 
-            # Comparación
             (r'==', TokenType.EQUAL),
             (r'!=', TokenType.NOT_EQUAL),
             (r'<=', TokenType.LESS_EQUAL),
@@ -34,10 +28,8 @@ class LexicalAnalyzer:
             (r'<', TokenType.LESS_THAN),
             (r'>', TokenType.GREATER_THAN),
 
-            # Asignación
             (r'=', TokenType.ASSIGN),
 
-            # Operadores aritméticos
             (r'\+', TokenType.PLUS),
             (r'-', TokenType.MINUS),
             (r'\*', TokenType.MULTIPLY),
@@ -45,7 +37,6 @@ class LexicalAnalyzer:
             (r'%', TokenType.MODULO),
             (r'!', TokenType.NOT),
 
-            # Delimitadores
             (r'\(', TokenType.LPAREN),
             (r'\)', TokenType.RPAREN),
             (r'\{', TokenType.LBRACE),
@@ -53,15 +44,17 @@ class LexicalAnalyzer:
             (r',', TokenType.COMMA),
             (r';', TokenType.SEMICOLON),
 
-            # Palabras reservadas
-            (r'\b(int|float|char|void|if|else|while|return)\b', None),
+            (r'\b(int|float|char|void|if|else|while|for|return)\b', None),
 
-            # Identificadores
             (r'[a-zA-Z_][a-zA-Z0-9_]*', TokenType.IDENTIFIER),
 
-            # Espacios y saltos
             (r'\n', TokenType.NEWLINE),
             (r'[ \t\r]+', TokenType.WHITESPACE),
+        ]
+
+        self.token_patterns = [
+            (re.compile(pattern, re.DOTALL), token_type)
+            for pattern, token_type in raw_patterns
         ]
 
         self.keywords = {
@@ -72,6 +65,7 @@ class LexicalAnalyzer:
             'if': TokenType.IF,
             'else': TokenType.ELSE,
             'while': TokenType.WHILE,
+            'for' : TokenType.FOR,
             'return': TokenType.RETURN,
         }
 
@@ -84,14 +78,13 @@ class LexicalAnalyzer:
         while pos < len(code):
             matched = False
 
-            for pattern, token_type in self.token_patterns:
-                regex = re.compile(pattern, re.DOTALL)
+            for regex, token_type in self.token_patterns:
                 match = regex.match(code, pos)
 
                 if match:
                     value = match.group(0)
-
                     current_type = token_type
+
                     if current_type is None:
                         current_type = self.keywords.get(value, TokenType.IDENTIFIER)
 

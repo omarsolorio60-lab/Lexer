@@ -4,7 +4,8 @@ from token_model import Token
 from ast_nodes import (
     Program, Literal, Identifier, BinaryOperation, UnaryOperation, FunctionCall,
     VariableDeclaration, Assignment, ReturnStatement, IfStatement, WhileStatement,
-    ExpressionStatement, Block, Parameter, FunctionDeclaration, Expression, Statement
+    ForStatement, ExpressionStatement, Block, Parameter, FunctionDeclaration,
+    Expression, Statement
 )
 
 
@@ -69,7 +70,14 @@ class SyntaxAnalyzer:
 
         if self.match(TokenType.LPAREN):
             return self.parse_function_declaration(type_token.value, name)
-        raise SyntaxError("Solo se soportan funciones en el nivel superior por ahora")
+
+        initializer = None
+        if self.match(TokenType.ASSIGN):
+            self.consume(TokenType.ASSIGN)
+            initializer = self.parse_expression()
+
+        self.consume(TokenType.SEMICOLON)
+        return VariableDeclaration(type_token.value, name, initializer)
 
     def parse_type_specifier(self) -> Token:
         token = self.current_token()
@@ -83,10 +91,13 @@ class SyntaxAnalyzer:
         parameters = []
 
         if not self.match(TokenType.RPAREN):
-            parameters.append(self.parse_parameter())
-            while self.match(TokenType.COMMA):
-                self.consume(TokenType.COMMA)
+            if self.match(TokenType.VOID) and self.peek_token() and self.peek_token().type == TokenType.RPAREN:
+                self.consume(TokenType.VOID)
+            else:
                 parameters.append(self.parse_parameter())
+                while self.match(TokenType.COMMA):
+                    self.consume(TokenType.COMMA)
+                    parameters.append(self.parse_parameter())
 
         self.consume(TokenType.RPAREN)
         body = self.parse_block()
@@ -117,6 +128,9 @@ class SyntaxAnalyzer:
         if self.match(TokenType.WHILE):
             return self.parse_while_statement()
 
+        if self.match(TokenType.FOR):
+            return self.parse_for_statement()
+
         if self.match(TokenType.RETURN):
             return self.parse_return_statement()
 
@@ -130,7 +144,7 @@ class SyntaxAnalyzer:
         self.consume(TokenType.SEMICOLON)
         return ExpressionStatement(expr)
 
-    def parse_variable_declaration(self) -> VariableDeclaration:
+    def parse_variable_declaration_core(self) -> VariableDeclaration:
         var_type = self.parse_type_specifier().value
         name = self.consume(TokenType.IDENTIFIER).value
         initializer = None
@@ -139,21 +153,30 @@ class SyntaxAnalyzer:
             self.consume(TokenType.ASSIGN)
             initializer = self.parse_expression()
 
-        self.consume(TokenType.SEMICOLON)
         return VariableDeclaration(var_type, name, initializer)
 
-    def parse_assignment(self) -> Assignment:
+    def parse_variable_declaration(self) -> VariableDeclaration:
+        declaration = self.parse_variable_declaration_core()
+        self.consume(TokenType.SEMICOLON)
+        return declaration
+
+    def parse_assignment_expression(self) -> Assignment:
         name = self.consume(TokenType.IDENTIFIER).value
         self.consume(TokenType.ASSIGN)
         value = self.parse_expression()
-        self.consume(TokenType.SEMICOLON)
         return Assignment(name, value)
+
+    def parse_assignment(self) -> Assignment:
+        assignment = self.parse_assignment_expression()
+        self.consume(TokenType.SEMICOLON)
+        return assignment
 
     def parse_if_statement(self) -> IfStatement:
         self.consume(TokenType.IF)
         self.consume(TokenType.LPAREN)
         condition = self.parse_expression()
         self.consume(TokenType.RPAREN)
+
         then_body = self.parse_statement()
         else_body = None
 
@@ -163,6 +186,7 @@ class SyntaxAnalyzer:
 
         if not isinstance(then_body, Block):
             then_body = Block([then_body])
+
         if else_body is not None and not isinstance(else_body, Block):
             else_body = Block([else_body])
 
@@ -173,12 +197,53 @@ class SyntaxAnalyzer:
         self.consume(TokenType.LPAREN)
         condition = self.parse_expression()
         self.consume(TokenType.RPAREN)
-        body = self.parse_statement()
 
+        body = self.parse_statement()
         if not isinstance(body, Block):
             body = Block([body])
 
         return WhileStatement(condition, body)
+
+    def parse_for_statement(self) -> ForStatement:
+        self.consume(TokenType.FOR)
+        self.consume(TokenType.LPAREN)
+
+        initializer = None
+        condition = None
+        increment = None
+
+        if self.match(TokenType.INT, TokenType.FLOAT, TokenType.CHAR):
+            initializer = self.parse_variable_declaration_core()
+            self.consume(TokenType.SEMICOLON)
+
+        elif self.match(TokenType.IDENTIFIER) and self.peek_token() and self.peek_token().type == TokenType.ASSIGN:
+            initializer = self.parse_assignment_expression()
+            self.consume(TokenType.SEMICOLON)
+
+        elif self.match(TokenType.SEMICOLON):
+            self.consume(TokenType.SEMICOLON)
+
+        else:
+            initializer = self.parse_expression()
+            self.consume(TokenType.SEMICOLON)
+
+        if not self.match(TokenType.SEMICOLON):
+            condition = self.parse_expression()
+        self.consume(TokenType.SEMICOLON)
+
+        if not self.match(TokenType.RPAREN):
+            if self.match(TokenType.IDENTIFIER) and self.peek_token() and self.peek_token().type == TokenType.ASSIGN:
+                increment = self.parse_assignment_expression()
+            else:
+                increment = self.parse_expression()
+
+        self.consume(TokenType.RPAREN)
+
+        body = self.parse_statement()
+        if not isinstance(body, Block):
+            body = Block([body])
+
+        return ForStatement(initializer, condition, increment, body)
 
     def parse_return_statement(self) -> ReturnStatement:
         self.consume(TokenType.RETURN)
@@ -252,6 +317,7 @@ class SyntaxAnalyzer:
             self.position += 1
             operand = self.parse_unary()
             return UnaryOperation(op, operand)
+
         return self.parse_primary()
 
     def parse_primary(self) -> Expression:
@@ -280,8 +346,7 @@ class SyntaxAnalyzer:
             self.consume(TokenType.RPAREN)
             return expr
 
-        token = self.current_token()
-        raise SyntaxError("Expresión inesperada", token)
+        raise SyntaxError("Expresión inesperada", self.current_token())
 
     def parse_function_call(self, name: str) -> FunctionCall:
         self.consume(TokenType.LPAREN)

@@ -113,6 +113,16 @@ class WhileStatement(Statement):
 
     def __str__(self):
         return f"While({self.condition}, {self.body})"
+    
+class ForStatement(Statement):
+    def __init__(self, initializer, condition: Optional[Expression], increment: Optional[Expression], body: 'Block'):
+        self.initializer = initializer
+        self.condition = condition
+        self.increment = increment
+        self.body = body
+
+    def __str__(self):
+        return f"For(init={self.initializer}, cond={self.condition}, inc={self.increment}, body={self.body})"
 
 
 class ExpressionStatement(Statement):

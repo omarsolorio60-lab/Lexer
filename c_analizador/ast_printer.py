@@ -1,6 +1,6 @@
 from ast_nodes import (
     Program, FunctionDeclaration, Block, VariableDeclaration, Assignment,
-    ReturnStatement, IfStatement, WhileStatement, ExpressionStatement,
+    ReturnStatement, IfStatement, WhileStatement, ForStatement, ExpressionStatement,
     BinaryOperation, UnaryOperation, Literal, Identifier, FunctionCall
 )
 
@@ -82,3 +82,26 @@ def mostrar_ast(node, indent=""):
         print(f"{indent}Llamada: {node.name}")
         for arg in node.arguments:
             mostrar_ast(arg, indent + "  ")
+
+    elif isinstance(node, ForStatement):
+        print(f"{indent}For:")
+        print(f"{indent}  Inicializador:")
+        if node.initializer:
+            mostrar_ast(node.initializer, indent + "    ")
+        else:
+            print(f"{indent}    None")
+
+        print(f"{indent}  Condicion:")
+        if node.condition:
+            mostrar_ast(node.condition, indent + "    ")
+        else:
+            print(f"{indent}    None")
+
+        print(f"{indent}  Incremento:")
+        if node.increment:
+            mostrar_ast(node.increment, indent + "    ")
+        else:
+            print(f"{indent}    None")
+
+        print(f"{indent}  Cuerpo:")
+        mostrar_ast(node.body, indent + "    ")

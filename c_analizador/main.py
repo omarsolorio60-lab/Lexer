@@ -1,6 +1,8 @@
+import sys
 from lexer import LexicalAnalyzer
 from parser import SyntaxAnalyzer, SyntaxError
 from ast_printer import mostrar_ast
+from token_types import TokenType
 
 
 def leer_archivo(ruta: str) -> str:
@@ -9,7 +11,7 @@ def leer_archivo(ruta: str) -> str:
 
 
 def main():
-    ruta = "samples/test.c"
+    ruta = sys.argv[1] if len(sys.argv) > 1 else "samples/test.c"
     codigo = leer_archivo(ruta)
 
     print("=" * 70)
@@ -24,7 +26,7 @@ def main():
     print("TOKENS")
     print("=" * 70)
     for token in tokens:
-        if token.type.value not in ["ESPACIO", "NUEVA_LINEA"]:
+        if token.type not in {TokenType.WHITESPACE, TokenType.NEWLINE}:
             print(token)
 
     print("\n" + "=" * 70)
